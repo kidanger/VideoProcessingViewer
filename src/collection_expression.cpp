@@ -9,7 +9,6 @@
 
 #include <alphanum.hpp>
 #include <doctest.h>
-#include <thread_pool.hpp>
 
 #include "collection_expression.hpp"
 #include "fs.hpp"
@@ -18,25 +17,88 @@
 #define SORT(x) \
     std::sort(x.begin(), x.end(), doj::alphanum_less<std::string>());
 
-static void try_to_read_a_zip(const std::string& path, std::vector<std::string>& filenames)
+static std::vector<std::string> expand_zip(const std::string& path)
 {
-#ifdef USE_GDAL
-    std::string zippath = "/vsizip/" + path + "/";
-    char** listing = VSIReadDirRecursive(zippath.c_str());
     std::vector<std::string> subfiles;
+#ifdef USE_GDAL
+    std::string zippath = path;
+    if (!startswith(zippath, "/vsizip/")) {
+        zippath = "/vsizip/" + zippath;
+    }
+    if (!endswith(zippath, "/")) {
+        zippath = zippath + "/";
+    }
+    char** listing = VSIReadDirRecursive(zippath.c_str());
     if (listing) {
         for (int i = 0; listing[i]; i++) {
+            if (endswith(listing[i], "/")) {
+                continue;
+            }
             subfiles.push_back(zippath + listing[i]);
         }
         CSLDestroy(listing);
     } else {
-        fprintf(stderr, "looks like the zip '%s' is empty\n", path.c_str());
+        fprintf(stderr, "looks like the zip '%s' is empty\n", zippath.c_str());
     }
 
-    std::sort(subfiles.begin(), subfiles.end(), doj::alphanum_less<std::string>());
-    std::copy(subfiles.cbegin(), subfiles.cend(), std::back_inserter(filenames));
+    SORT(subfiles);
 #else
     fprintf(stderr, "reading from zip require GDAL support\n");
+    subfiles.push_back(path);
+#endif
+    return subfiles;
+}
+
+static std::vector<std::string> expand_s3(const std::string& path)
+{
+    std::vector<std::string> subfiles;
+#ifdef USE_GDAL
+    char** listing = VSIReadDirRecursive(path.c_str());
+    if (listing) {
+        for (int i = 0; listing[i]; i++) {
+            if (endswith(listing[i], "/")) {
+                continue;
+            }
+
+            std::string fullname = path + listing[i];
+            subfiles.push_back(fullname);
+        }
+        CSLDestroy(listing);
+    } else {
+        fprintf(stderr, "looks like the S3 uri '%s' is empty\n", path.c_str());
+    }
+
+    SORT(subfiles);
+#else
+    fprintf(stderr, "listings on S3 require GDAL support\n");
+    subfiles.push_back(path);
+#endif
+    return subfiles;
+}
+
+static std::vector<std::string> expand_path(const std::string& path)
+{
+    if (endswith(path, ".zip")) {
+        return expand_zip(path);
+    }
+    if (startswith(path, "/vsis3/") && endswith(path, "/")) {
+        return expand_s3(path);
+    }
+    return { path };
+}
+
+static inline void convert_for_gdal(std::string& path)
+{
+#ifdef USE_GDAL
+    if (startswith(path, "s3://")) {
+        path = std::regex_replace(path, std::regex("s3://"), "/vsis3/");
+    }
+    if (startswith(path, "https://")) {
+        path = std::regex_replace(path, std::regex("https://"), "/vsicurl/https://");
+    }
+    if (startswith(path, "http://")) {
+        path = std::regex_replace(path, std::regex("http://"), "/vsicurl/http://");
+    }
 #endif
 }
 
@@ -82,7 +144,7 @@ static void list_directory(const std::string& path, std::vector<std::string>& di
     }
 }
 
-std::vector<std::string> collect_directory(const std::string& path)
+static std::vector<std::string> collect_directory(const std::string& path)
 {
     std::vector<std::string> results;
 
@@ -108,7 +170,8 @@ std::vector<std::string> collect_directory(const std::string& path)
                 results.push_back(f);
             }
         } else {
-            results.push_back(path);
+            auto expanded = expand_path(path);
+            std::copy(expanded.cbegin(), expanded.cend(), std::back_inserter(results));
         }
     }
     return results;
@@ -117,28 +180,33 @@ std::vector<std::string> collect_directory(const std::string& path)
 std::vector<std::string> buildFilenamesFromExpression(const std::string& expr)
 {
     std::vector<std::string> filenames;
-    printf("start collect\n");
 
     for (auto subexpr : try_split(expr)) {
         auto globres = do_glob(subexpr);
-        for (auto file : globres) {
-            if (fs::is_directory(file)) {
-                auto indir = collect_directory(file);
-                for (auto f : indir)
-                    filenames.push_back(f);
-            } else {
-                filenames.push_back(file);
+
+        if (globres.size() == 0) {
+            // vpv /vsicurl/https://download.osgeo.org/gdal/data/gtiff/small_world.tif
+            // it's not a file, so it won't not be in the globres
+            convert_for_gdal(subexpr);
+            auto expanded = expand_path(subexpr);
+            std::copy(expanded.cbegin(), expanded.cend(), std::back_inserter(filenames));
+        } else {
+            for (auto file : globres) {
+                if (fs::is_directory(file)) {
+                    auto indir = collect_directory(file);
+                    std::copy(indir.cbegin(), indir.cend(), std::back_inserter(filenames));
+                } else {
+                    auto expanded = expand_path(file);
+                    std::copy(expanded.cbegin(), expanded.cend(), std::back_inserter(filenames));
+                }
             }
         }
     }
-
-    printf("end collect\n");
 
     if (filenames.empty() && expr == "-") {
         filenames.push_back("-");
     }
 
-    printf("%lu\n", filenames.size());
     return filenames;
 }
 
