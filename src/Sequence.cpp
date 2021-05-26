@@ -71,7 +71,7 @@ void Sequence::setSVGGlobs(const std::vector<std::string>& svgglobs)
                 files.push_back(filename);
             }
         } else {
-            recursive_collect(files, glob);
+            //recursive_collect(files, glob);
         }
         svgcollection.push_back(files);
     }
