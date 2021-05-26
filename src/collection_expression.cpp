@@ -154,39 +154,39 @@ TEST_CASE("buildFilenamesFromExpression")
 
     SUBCASE("src (flat)")
     {
-        auto v = buildFilenamesFromExpression("src");
+        auto v = buildFilenamesFromExpression("../src");
         CHECK(v.size() == 70);
         if (v.size() > 0)
-            CHECK(v[0] == "src/Colormap.cpp");
+            CHECK(v[0] == "../src/Colormap.cpp");
         if (v.size() > 1)
-            CHECK(v[1] == "src/Colormap.hpp");
+            CHECK(v[1] == "../src/Colormap.hpp");
     }
 
     SUBCASE("src/*.cpp (glob)")
     {
-        auto v = buildFilenamesFromExpression("src/*.cpp");
+        auto v = buildFilenamesFromExpression("../src/*.cpp");
         CHECK(v.size() == 33);
         if (v.size() > 0)
-            CHECK(v[0] == "src/Colormap.cpp");
+            CHECK(v[0] == "../src/Colormap.cpp");
         if (v.size() > 1)
-            CHECK(v[1] == "src/DisplayArea.cpp");
+            CHECK(v[1] == "../src/DisplayArea.cpp");
     }
 
     SUBCASE("external (recursive)")
     {
-        auto v = buildFilenamesFromExpression("external");
+        auto v = buildFilenamesFromExpression("../external");
         CHECK(v.size() >= 1500);
         if (v.size() > 0)
-            CHECK(v[0] == "external/dirent/dirent.h");
+            CHECK(v[0] == "../external/dirent/dirent.h");
         if (v.size() > 1)
-            CHECK(v[1] == "external/doctest/doctest.h");
+            CHECK(v[1] == "../external/doctest/doctest.h");
     }
 
     SUBCASE("src::external (::)")
     {
-        auto v1 = buildFilenamesFromExpression("src");
-        auto v2 = buildFilenamesFromExpression("external");
-        auto v = buildFilenamesFromExpression("src::external");
+        auto v1 = buildFilenamesFromExpression("../src");
+        auto v2 = buildFilenamesFromExpression("../external");
+        auto v = buildFilenamesFromExpression("../src::../external");
         CHECK(v.size() == v1.size() + v2.size());
         if (v.size() > 0)
             CHECK(v[0] == v1[0]);
