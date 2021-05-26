@@ -243,7 +243,7 @@ TEST_CASE("buildFilenamesFromExpression")
     SUBCASE("external (recursive)")
     {
         auto v = buildFilenamesFromExpression("../external");
-        CHECK(v.size() >= 1500);
+        CHECK(v.size() >= 400);
         if (v.size() > 0)
             CHECK(v[0] == "../external/dirent/dirent.h");
         if (v.size() > 1)
