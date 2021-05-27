@@ -6,4 +6,3 @@
 class ImageCollection;
 
 std::vector<std::string> buildFilenamesFromExpression(const std::string& expr);
-

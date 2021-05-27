@@ -223,7 +223,7 @@ TEST_CASE("buildFilenamesFromExpression")
     SUBCASE("src (flat)")
     {
         auto v = buildFilenamesFromExpression("../src");
-        CHECK(v.size() == 70);
+        CHECK(v.size() == 72);
         if (v.size() > 0)
             CHECK(v[0] == "../src/Colormap.cpp");
         if (v.size() > 1)
@@ -233,7 +233,7 @@ TEST_CASE("buildFilenamesFromExpression")
     SUBCASE("src/*.cpp (glob)")
     {
         auto v = buildFilenamesFromExpression("../src/*.cpp");
-        CHECK(v.size() == 33);
+        CHECK(v.size() == 34);
         if (v.size() > 0)
             CHECK(v[0] == "../src/Colormap.cpp");
         if (v.size() > 1)
