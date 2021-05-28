@@ -186,7 +186,7 @@ std::vector<std::string> buildFilenamesFromExpression(const std::string& expr)
 
         if (globres.size() == 0) {
             // vpv /vsicurl/https://download.osgeo.org/gdal/data/gtiff/small_world.tif
-            // it's not a file, so it won't not be in the globres
+            // it's not a file, so it won't be in the globres
             convert_for_gdal(subexpr);
             auto expanded = expand_path(subexpr);
             std::copy(expanded.cbegin(), expanded.cend(), std::back_inserter(filenames));
